@@ -11,13 +11,19 @@ library(Hmisc)
 
 source("init.r")
 
-sitrep_filename = "Winter-data-week-commencing-20171204.xlsx"
-# previous filenames:
-# "Winter-data-we-3-Dec-v2.xlsx"
+# sitrep_filename = "Winter-data-20171217.xlsx"
 
-# pick the most recent file in the sitrep folder?
+# pick the most recent file in the sitrep folder
 # source: https://stackoverflow.com/questions/13762224/how-to-sort-files-list-by-date/13762544
-# sitrep_details = file.info(list.files(path=sitrep.dir, pattern="*.csv"))
+sitrep_details = file.info(list.files(path=sitrep.dir, pattern="*.xlsx", full.names=T))
+
+sitrep_filename = sitrep_details %>% 
+  rownames_to_column() %>% 
+  mutate(mtime = as.POSIXct(mtime)) %>% 
+  arrange(desc(mtime)) %>% 
+  top_n(1, mtime) %>% 
+  select(rowname) %>% 
+  as.character()
 
 n.bins = 4  # how do we want to rank the Trusts? Quartiles, quintiles etc.
 
@@ -28,13 +34,13 @@ n.bins = 4  # how do we want to rank the Trusts? Quartiles, quintiles etc.
 # load situation report
 # published on Thursdays at 9.30am until end of Feb 2018
 # source: https://www.england.nhs.uk/statistics/statistical-work-areas/winter-daily-sitreps/winter-daily-sitrep-2017-18-data/
-sitrep_path = file.path(sitrep.dir, sitrep_filename)
+# sitrep_path = file.path(sitrep.dir, sitrep_filename)
 
-sitrep_ambulance = read_excel(sitrep_path, sheet = "Ambulance Arrivals and Delays", skip = 14)
-# sitrep_dv      = read_excel(sitrep_path, sheet = "D&V, Norovirus", skip = 14)  # beds closed due to diarrhea and vomiting
-sitrep_beds      = read_excel(sitrep_path, sheet = "G&A beds", skip = 14)        # general and acute beds
-sitrep_closures  = read_excel(sitrep_path, sheet = "A&E closures", skip = 14)
-sitrep_diverts   = read_excel(sitrep_path, sheet = "A&E diverts", skip = 14)
+sitrep_ambulance = read_excel(sitrep_filename, sheet = "Ambulance Arrivals and Delays", skip = 14)
+# sitrep_dv      = read_excel(sitrep_filename, sheet = "D&V, Norovirus", skip = 14)  # beds closed due to diarrhea and vomiting
+sitrep_beds      = read_excel(sitrep_filename, sheet = "G&A beds", skip = 14)        # general and acute beds
+sitrep_closures  = read_excel(sitrep_filename, sheet = "A&E closures", skip = 14)
+sitrep_diverts   = read_excel(sitrep_filename, sheet = "A&E diverts", skip = 14)
 
 # load NHS Trusts data
 # column names come from the data dictionary published with the data
@@ -52,7 +58,7 @@ nhs_trusts = read_csv(file.path(nhs.dir, "etr.csv"),
 ## clean sitrep data
 ##
 # extract dates for this sitrep
-sitrep_dates = read_excel(sitrep_path, sheet = "G&A beds", skip=12, n_max = 1)  # this row contains the dates
+sitrep_dates = read_excel(sitrep_filename, sheet = "G&A beds", skip=12, n_max = 1)  # this row contains the dates
 #... the last column contains the most recent date
 sitrep_date = sitrep_dates[, ncol(sitrep_dates)]     # get the last column only
 names(sitrep_date) = "latest_date"                   # give the column a better name
@@ -76,14 +82,17 @@ sitrep_diverts   = sitrep_diverts %>% select(-starts_with("X__"))
 ##
 ## Take the most recent days for each of the datasets and combine into a single dataframe
 ##
+# which is the highest-numbered column (the most recent date)?
+col_num = gsub(".*__([0-9]+)", "\\1", names(sitrep_ambulance)[length(names(sitrep_ambulance))])
+col_regex = paste0("(.*)__", col_num)  # regular expression for selecting the most recent date column
+
 # keep the most recent days for ambulances and beds 
-# (first day doesn't have a __x number suffix so the most recent (7th) day is suffixed __6)...
-sitrep_ambulance = sitrep_ambulance %>% select(`NHS England Region`:Name, ends_with("__6"))
-sitrep_beds      = sitrep_beds %>% select(`NHS England Region`:Name, ends_with("__6"))
+sitrep_ambulance = sitrep_ambulance %>% select(`NHS England Region`:Name, matches(col_regex))
+sitrep_beds      = sitrep_beds      %>% select(`NHS England Region`:Name, matches(col_regex))
 
 #... rename columns to drop the __6 suffix
-names(sitrep_ambulance) = str_replace(names(sitrep_ambulance), "(.*)__6", "\\1")
-names(sitrep_beds)      = str_replace(names(sitrep_beds),      "(.*)__6", "\\1")
+names(sitrep_ambulance) = str_replace(names(sitrep_ambulance), col_regex, "\\1")
+names(sitrep_beds)      = str_replace(names(sitrep_beds),      col_regex, "\\1")
 
 # keep the most recent days for closures and diverts...
 most_recent_idx = ncol(sitrep_diverts)
@@ -105,6 +114,12 @@ sitrep = sitrep_ambulance %>%
   left_join(sitrep_beds     %>% select(-`NHS England Region`, -Name), by="Code") %>% 
   left_join(sitrep_closures %>% select(-`NHS England Region`, -Name), by="Code") %>% 
   left_join(sitrep_diverts  %>% select(-`NHS England Region`, -Name), by="Code")
+
+# make sure the columns are numeric - sometimes their data uses "-" for missing values
+sitrep$`Delay 30-60 mins` = as.numeric(sitrep$`Delay 30-60 mins`)
+sitrep$`Occupancy rate` = as.numeric(sitrep$`Occupancy rate`)
+sitrep$Closures = as.numeric(sitrep$Closures)
+sitrep$Diverts = as.numeric(sitrep$Diverts)
 
 
 ###########################################################################
@@ -141,7 +156,6 @@ sitrep$Closures = ifelse(sitrep$Closures > 1, 1, 0)
 sitrep$Diverts  = ifelse(sitrep$Diverts  > 1, 1, 0)
 
 # generate ratings for the hospitals, based on `n.bins`, which was set at the start of this file
-# (defaults to quartiles)
 sitrep$Delay_stress    = as.integer(cut2(sitrep$`Delay 30-60 mins`, g=n.bins))
 sitrep$Beds_stress     = as.integer(cut2(sitrep$`Occupancy rate`,   g=n.bins))
 sitrep$Closures_stress = as.integer(cut2(sitrep$Closures,           g=n.bins))
