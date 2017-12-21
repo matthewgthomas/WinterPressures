@@ -26,7 +26,7 @@ vol_radius = 40000  # 40km
 
 # volunteer data from Fiona Agnew's report
 # subset emergency response and IL volunteers
-vols = read_csv(file.path(vols.dir, "volunteers - 6-11-17 - coords.csv")) %>%
+vols = read_csv(file.path(vols.dir, "volunteers - 18-12-17.csv")) %>%
   rename(Position = `Role Name`, `Position location` = Location, Basis = `Volunteer Basis`,
          Type = `Volunteer Type`) %>% 
   filter(Basis == "Regular" & Type == "Active") %>%   # only show regular, active volunteers
