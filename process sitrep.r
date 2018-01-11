@@ -11,8 +11,6 @@ library(Hmisc)
 
 source("init.r")
 
-# sitrep_filename = "Winter-data-20171217.xlsx"
-
 # pick the most recent file in the sitrep folder
 # source: https://stackoverflow.com/questions/13762224/how-to-sort-files-list-by-date/13762544
 sitrep_details = file.info(list.files(path=sitrep.dir, pattern="*.xlsx", full.names=T))
@@ -52,6 +50,27 @@ nhs_trusts = read_csv(file.path(nhs.dir, "etr.csv"),
                                     "Open date", "Close date", "Null 1", "Null 2", "Null 3", "Null 4", "Null 5",
                                     "Contact telephone number", "Null 6", "Null 7", "Null 8", "Amended record indicator",
                                     "Null 9", "GOR code", "Null 10", "Null 11", "Null 12"))
+
+# load postcodes from the National Statistics Postcode Lookup
+## source: http://geoportal.statistics.gov.uk/datasets/national-statistics-postcode-lookup-latest-centroids
+## column descriptions are available Annex B of https://ago-item-storage.s3-external-1.amazonaws.com/1f6c4dfccc9545ccbb853afbe9833558/NSPL_User_Guide_Nov_2017.pdf?X-Amz-Security-Token=FQoDYXdzEBIaDDVhX9xIqSTA9aOsHyK3A81w9RQ%2Bjsec0aVKOnhu1Uq8MUtoT6xzZeFWUvk0urOKkcKik3BeLxwWc%2BCXP8z%2BGgZMXEeP%2BHHi74kGxLXAl59iUw4pPOJjIeMr%2B8Q%2BI0xQheMTC%2BizEaFZ2XfghVh9QEU812TQDvQzmUnlwsqTCsV3s6LyNHtx%2B4HJKXQQ5XEXl3ch%2B3WZS3WFKFcrST9axRAbTpuqNe3JKyaBju4gy%2F9y4cEv9%2F4gxU1tTTBRE3igj8d4f8Gv3lyn6CUS%2F2%2FgHma2fdXvFXok6SIskrdTaRH9C%2BncAb%2BIgdSn7P%2FD2FbdvT2%2FkX%2Bvc%2BBuohV0LBD64p6K0OYdo%2B9cNHEZ48yrL6hWRV8XDm89cxnqLWChJrAsSLV57cACfNpHUpUmfdxfRVVEvB%2Buo8BYSqlNjEzwHhZ3uHM4H5MkcKBStUzvIjiqsRAOIirXaRes6lfER%2BPwN6aHSbTydbhreH2alLw%2F36heqI20pwV%2BybNCu0GyS3pEsBc7uRSSf8Cabz1BzR5Hiz2nCIcF0uReWhbByj1nc5GD47t9iYSzDFekw94MV9W8EJMjpbaNSHYh5fvZ1UT1gqXHLyXGJbcouJbz0QU%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20171222T102253Z&X-Amz-SignedHeaders=host&X-Amz-Expires=300&X-Amz-Credential=ASIAJ2EMZYLUTIJMK5PQ%2F20171222%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=7acfa17a5e027e60bf28c3208c24d88f261adb3ad8a14f20ae18a6d4d2705b2a
+##
+postcodes = read_csv(file.path(data.dir, "Postcodes", "National_Statistics_Postcode_Lookup_Latest_Centroids.csv"),
+                     col_types = cols(
+                       X = col_double(),
+                       Y = col_double(),
+                       objectid = col_integer(),
+                       dointr = col_integer(),
+                       doterm = col_integer(),
+                       usertype = col_integer(),
+                       oseast1m = col_integer(),
+                       osgrdind = col_integer(),
+                       ru11ind = col_character(),
+                       lat = col_double(),
+                       long = col_double(),
+                       imd = col_integer(),
+                       .default = col_character()
+                       ))
 
 
 ###########################################################################
@@ -125,12 +144,9 @@ sitrep$Diverts = as.numeric(sitrep$Diverts)
 ###########################################################################
 ## Merge in coords for postcodes
 ##
-# load postcodes
-postcodes = read_csv(file.path(data.dir, "National_Statistics_Postcode_Lookup_UK.csv"))  # ~700MB .csv file from https://data.gov.uk/dataset/national-statistics-postcode-lookup-uk
-
-# keep only postcodes, coordinates and some info about regions, wards, PCTs
+# keep only postcodes and coordinates
 postcodes = postcodes %>% 
-  select(Postcode = `Postcode 1`, Longitude, Latitude)
+  select(Postcode = pcd, Longitude = long, Latitude = lat)
 
 # the ONS data truncates 7-character postcodes (e.g. CM99 1AB) to remove spaces (--> CM991AB) for some reason; get rid of all spaces in both datasets to allow merging
 postcodes$Postcode  = gsub(" ", "", postcodes$Postcode)
