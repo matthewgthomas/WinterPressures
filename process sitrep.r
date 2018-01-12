@@ -207,4 +207,4 @@ sitrep$StressRank[is.na(sitrep$StressRank)] = n.bins
 ##
 # save a date-stamped file for archiving plus a copy for feeding into the map
 write_csv(sitrep, file.path(sitrep.dir, paste0("sitrep - ", sitrep_date, ".csv")))
-write_csv(sitrep, file.path(sitrep.dir, "sitrep - clean.csv"))
+# write_csv(sitrep, file.path(sitrep.dir, "sitrep - clean.csv"))  # don't need this one anymore since map script now loads most recent sitrep .csv file
