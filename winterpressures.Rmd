@@ -31,6 +31,7 @@ vols = read_csv(file.path(vols.dir, "volunteers - 18-12-17.csv")) %>%
          Type = `Volunteer Type`) %>% 
   filter(Basis == "Regular" & Type == "Active") %>%   # only show regular, active volunteers
   filter(`Role Family` %in% c("Emergency Response", "Independent Living")) %>% 
+  filter(substr(Country, 1, 1) == "E") %>%      # volunteers in England only
   filter(!is.na(Latitude) & !is.na(Longitude))  # drop people we can't map
 
 # latest version of the winter situation report
