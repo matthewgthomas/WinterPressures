@@ -133,7 +133,7 @@ sitrep$hovertext = mapply(
 
 BRC volunteers are represented by the blue heatmap, with a `r vol_radius / 1000`km radius drawn around each volunteer. The heatmap only shows regular, active Emergency Response and Independent Living volunteers.
 
-The coloured circles outlined in black are NHS England Trusts. The colour of the hopistal icons represents [winter pressures facing NHS Trusts](https://www.england.nhs.uk/statistics/statistical-work-areas/winter-daily-sitreps/winter-daily-sitrep-2017-18-data/); these have been summarised on a scale of one to four, where <span style="color:#31a354">one means low/no pressure</span>, <span style="color:#fed976">two means below-average pressure</span>, <span style="color:#fd8d3c">three means moderate pressure</span> and <span style="color:#de2d26">four means high pressure</span>.
+The coloured circles outlined in black are NHS England Trusts. The colour of the hospital icons represents [winter pressures facing NHS Trusts](https://www.england.nhs.uk/statistics/statistical-work-areas/winter-daily-sitreps/winter-daily-sitrep-2017-18-data/); these have been summarised on a scale of one to four, where <span style="color:#31a354">one means low/no pressure</span>, <span style="color:#fed976">two means below-average pressure</span>, <span style="color:#fd8d3c">three means moderate pressure</span> and <span style="color:#de2d26">four means high pressure</span>.
 
 This winter pressures scale was derived from four indicators:
 
