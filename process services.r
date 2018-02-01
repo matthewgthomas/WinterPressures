@@ -8,13 +8,23 @@ library(stringr)
 source("init.r")
 
 # load independent living services to show on map
-services = read_excel(file.path(data.dir, services.dir, "Service Database_Export_08 01 2018_ENGLAND_S%40H_TS.xlsx"))
+services    = read_excel(file.path(data.dir, services.dir, "Service Database_Export_08 01 2018_ENGLAND_S%40H_TS.xlsx"))
+services_se = read_excel(file.path(data.dir, services.dir, "Mapping services 180129.xlsx"), sheet="South East")
+
+# unique(services$`Area Name`)
 
 # keep only areas in England
 services = services %>% 
-  filter(`Area Name` %in% c("NORTH", "CENTRAL", "SOUTH EAST", "SOUTH & THE CHANNEL ISLANDS", "LONDON", "Northern (Manvers)", "Harlow", "Crawley", "Telford", "Carlisle", "Isle of Wight")) %>% 
+  filter(`Area Name` %in% c("NORTH", "CENTRAL", "SOUTH EAST", "SOUTH & THE CHANNEL ISLANDS", "LONDON", "Northern (Manvers)", "Harlow", "Crawley", "Telford", "Carlisle", "Isle of Wight", "Warmley")) %>% 
   filter(`Is This Scheme Inactive?` == "NO") %>% 
-  select(Type = `Type of Service`, Name = `Official Scheme Name`, Category = `Categorisation (Primary Scheme Classification)`, Staff = `Number of staff currently attached to this service`, Vols = `Number of volunteers currently attached to this service`, `Hospital 1`, `Hospital 2`, `Hospital 3`, `Hospital 4`, Postcode = `Location Scheme Postcode`, Location = `Location of Scheme`, Location_hospital = `Location if Scheme in a Hospital`)
+  select(Type = `Type of Service`, Name = `Official Scheme Name`, Category = `Categorisation (Primary Scheme Classification)`, 
+         Staff = `Number of staff currently attached to this service`, Vols = `Number of volunteers currently attached to this service`, 
+         `Hospital 1`, `Hospital 2`, `Hospital 3`, `Hospital 4`, 
+         Postcode = `Location Scheme Postcode`, Location = `Location of Scheme`, Location_hospital = `Location if Scheme in a Hospital`)
+
+services_se = services_se %>% 
+  select(Type = `Type of Service`, Name = `Official Scheme Name`, Category = `Categorisation (Primary Scheme Classification)`, 
+         Staff, Vols, Hospitals = Hospital, Postcode = `Location Scheme Postcode`, Location)
 
 ##
 ## clean postcodes
@@ -33,6 +43,16 @@ services = services %>%
   unnest() %>%                                                      # convert entries with multiple postcodes into separate rows
   mutate(Postcode = toupper(Postcode))                              # postcodes should be uppercase
 
+services_se = services_se %>% 
+  mutate(Postcode = str_extract_all(Postcode, postcode_regex)) %>%  # convert entries containing multiple postcodes into lists
+  mutate(Postcode = na_if(Postcode, "character(0)")) %>%            # set empty lists to NAs (otherwise unnest() doesn't work properly)
+  unnest() %>%                                                      # convert entries with multiple postcodes into separate rows
+  mutate(Postcode = toupper(Postcode))                              # postcodes should be uppercase
+
+# count number of services with valid postcodes
+# sum(!is.na(services$Postcode))
+# sum(!is.na(services_se$Postcode))
+
 # some data cleaning
 services = services %>% 
   mutate(`Hospital 1` = na_if(`Hospital 1`, "*NOT APPLICABLE*"),
@@ -44,12 +64,21 @@ services = services %>%
 # just make a comma-separated string since we're only going to display this data in the map popups
 services = services %>% 
   # combine the four hospitals columns into a comma-separated list
-  unite(Hospitals, `Hospital 1`, `Hospital 2`, `Hospital 3`, `Hospital 4`, sep=", ", remove=F) %>% 
+  unite(Hospitals, `Hospital 1`, `Hospital 2`, `Hospital 3`, `Hospital 4`, sep=", ", remove=T) %>% 
   # replace NAs with spaces
   mutate(Hospitals = str_replace_all(Hospitals, "NA", " ")) %>% 
   # remove empty list items
   mutate(Hospitals = str_replace_all(Hospitals, "^\\s,\\s|,\\s{2}", ""))  # source: https://stackoverflow.com/a/39358929
-  
+
+# some data cleaning
+services$Location_hospital = NULL
+
+services_se = services_se %>% 
+  mutate(Location = na_if(Location, 0))
+
+# append South East services to main services dataframe
+services = bind_rows(services, services_se)
+
 
 #################################################################################
 ## get coordinates for postcodes
@@ -77,7 +106,10 @@ services$Postcode2  = gsub(" ", "", services$Postcode)
 services = services %>% 
   left_join(postcodes, by="Postcode2")
 
+# clean up postcode columns
 services$Postcode2 = NULL  # don't need the truncated column anymore
+services$Postcode.y = NULL
+services = rename(services, Postcode = Postcode.x)
 
 ##
 ## save processed services 
