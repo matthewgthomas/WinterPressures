@@ -12,6 +12,11 @@ source("process sitrep.r")
 # note: you should only need to run this once (or after every extract)
 # source("process services.r")
 
+# get boundaries for community connector services
+# you'll only need to run this once (or whenever a new CC site comes about)
+# source("process community connectors.r")
+
 # produce map as .html file (all data and javascript will be contained in the single file)
-rmarkdown::render("winterpressures.Rmd", output_file="index.html", output_dir="output")
-rmarkdown::render("winterpressures-services.Rmd", output_file="index-services.html", output_dir="output")
+# rmarkdown::render("winterpressures.Rmd", output_file="index.html", output_dir="output")
+rmarkdown::render("winterpressures-services.Rmd", output_file="index.html", output_dir="output")
+
